@@ -25,6 +25,8 @@ matplotlib.rc('font', **{'size': 11})
 matplotlib.use('Agg')  # for writing to files only
 
 
+num_keypoints = 1
+
 class Colors:
     # Ultralytics color palette https://ultralytics.com/
     def __init__(self):
@@ -81,8 +83,13 @@ def plot_one_box(x, im, color=None, label=None, line_thickness=3, kpt_label=Fals
             cv2.rectangle(im, c1, c2, color, -1, cv2.LINE_AA)  # filled
             cv2.putText(im, label, (c1[0], c1[1] - 2), 0, tl / 6, [225, 255, 255], thickness=tf//2, lineType=cv2.LINE_AA)
     if kpt_label:
-        plot_skeleton_kpts(im, kpts, steps, orig_shape=orig_shape)
+        # plot_skeleton_kpts(im, kpts, steps, orig_shape=orig_shape)
+        plot_keypoints(im, kpts, steps, orig_shape=orig_shape)
 
+
+def plot_keypoints(im, kpts, steps, orig_shape=None):
+    x, y = int(kpts[0]), int(kpts[1])
+    im = cv2.circle(im, (x,y), 0, (0,255,0), 6)
 
 def plot_skeleton_kpts(im, kpts, steps, orig_shape=None):
     #Plot the skeleton and keypointsfor coco datatset
@@ -199,6 +206,8 @@ def plot_images(images, targets, paths=None, fname='images.jpg', names=None, max
         h = math.ceil(scale_factor * h)
         w = math.ceil(scale_factor * w)
 
+    labels_shape = 2 + 4 + num_keypoints * 2
+
     mosaic = np.full((int(ns * h), int(ns * w), 3), 255, dtype=np.uint8)  # init
     for i, img in enumerate(images):
         if i == max_subplots:  # if last batch has fewer images than we expect
@@ -212,11 +221,13 @@ def plot_images(images, targets, paths=None, fname='images.jpg', names=None, max
             img = cv2.resize(img, (w, h))
 
         mosaic[block_y:block_y + h, block_x:block_x + w, :] = img
+
         if len(targets) > 0:
             image_targets = targets[targets[:, 0] == i]
+
             boxes = xywh2xyxy(image_targets[:, 2:6]).T
             classes = image_targets[:, 1].astype('int')
-            labels = image_targets.shape[1] == 40 if kpt_label else image_targets.shape[1] == 6   # labels if no conf column
+            labels = image_targets.shape[1] == labels_shape if kpt_label else image_targets.shape[1] == 6   # labels if no conf column
             conf = None if labels else image_targets[:, 6]  # check for confidence presence (label vs pred)
             if kpt_label:
                 if conf is None:
